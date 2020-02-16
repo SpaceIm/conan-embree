@@ -95,8 +95,8 @@ class EmbreeConan(ConanFile):
     def _get_cpp_info_ordered_libs(self):
         gen_libs = tools.collect_libs(self)
 
-        lib_list = ["embree3", "embree3_sse42", "embree3_avx", "embree3_avx2", \
-                    "embree3_avx512knl", "embree3_avx512skx", "simd", \
+        lib_list = ["embree3", "embree_sse42", "embree_avx", "embree_avx2", \
+                    "embree_avx512knl", "embree_avx512skx", "simd", \
                     "lexers", "tasking", "sys", "math"]
 
         # List of lists, so if more than one matches the lib both will be added
