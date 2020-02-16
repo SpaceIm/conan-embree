@@ -82,7 +82,8 @@ class EmbreeConan(ConanFile):
         cmake.install()
         tools.rmdir(os.path.join(self.package_folder, "share"))
         tools.rmdir(os.path.join(self.package_folder, "lib", "cmake"))
-        tools.rmdir(os.path.join(self.package_folder, "uninstall.command"))
+        for command_file in glob.glob(os.path.join(self.package_folder, "*.command")):
+            os.remove(command_file)
         for cmake_file in glob.glob(os.path.join(self.package_folder, "*.cmake")):
             os.remove(cmake_file)
 
