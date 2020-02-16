@@ -1,0 +1,4 @@
+sources:
+  "3.6.1":
+    url: "https://github.com/embree/embree/archive/v3.6.1.zip"
+    sha256: "04249e38a135f961716a4abf19447e58f7e468a5faf6138dea40aaa36f83f553"
