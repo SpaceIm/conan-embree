@@ -10,7 +10,6 @@ class EmbreeConan(ConanFile):
     topics = ("conan", "embree", "raytracing", "rendering")
     homepage = "https://embree.github.io/"
     url = "https://github.com/conan-io/conan-center-index"
-    requires = "tbb/2019_u9"
     exports_sources = "CMakeLists.txt"
     generators = "cmake", "cmake_find_package"
     settings = "os", "arch", "compiler", "build_type"
@@ -42,6 +41,9 @@ class EmbreeConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
+
+    def requirements(self):
+        self.requires.add("tbb/2020.0")
 
     def source(self):
         tools.get(**self.conan_data["sources"][self.version])
