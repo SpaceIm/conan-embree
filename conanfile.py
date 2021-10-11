@@ -7,7 +7,7 @@ import textwrap
 required_conan_version = ">=1.33.0"
 
 
-class Embree(ConanFile):
+class EmbreeConan(ConanFile):
     name = "embree"
     license = "Apache-2.0"
     url = "https://github.com/conan-io/conan-center-index"
