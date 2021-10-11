@@ -19,6 +19,7 @@ class EmbreeConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "sse2": [True, False],
         "sse42": [True, False],
         "avx": [True, False],
         "avx2": [True, False],
@@ -39,7 +40,8 @@ class EmbreeConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "sse42": True,
+        "sse2": True,
+        "sse42": False,
         "avx": False,
         "avx2": False,
         "avx512": False,
@@ -79,8 +81,8 @@ class EmbreeConan(ConanFile):
     @property
     def _num_isa(self):
         num_isa = 0
-        for simd_option in ["sse42", "avx", "avx2", "avx512"]:
-            if getattr(self.options, simd_option):
+        for simd_option in ["sse2", "sse42", "avx", "avx2", "avx512"]:
+            if getattr(self.options, simd_option, False):
                 num_isa += 1
         return num_isa
 
@@ -125,7 +127,7 @@ class EmbreeConan(ConanFile):
         self._cmake.definitions["EMBREE_ISPC_SUPPORT"] = False
         self._cmake.definitions["EMBREE_TASKING_SYSTEM"] = "INTERNAL"
         self._cmake.definitions["EMBREE_MAX_ISA"] = "NONE"
-        self._cmake.definitions["EMBREE_ISA_SSE2"] = False # not used
+        self._cmake.definitions["EMBREE_ISA_SSE2"] = self.options.sse2
         self._cmake.definitions["EMBREE_ISA_SSE42"] = self.options.sse42
         self._cmake.definitions["EMBREE_ISA_AVX"] = self.options.avx
         self._cmake.definitions["EMBREE_ISA_AVX2"] = self.options.avx2
