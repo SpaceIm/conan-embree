@@ -21,6 +21,8 @@ jobs:
           - { name: "GCC",   version: "9",   dockerimage: "conanio/gcc9",    buildType: "Release"  }
           - { name: "GCC",   version: "10",  dockerimage: "conanio/gcc10",   buildType: "Debug"    }
           - { name: "GCC",   version: "10",  dockerimage: "conanio/gcc10",   buildType: "Release"  }
+          - { name: "GCC",   version: "11",  dockerimage: "conanio/gcc11",   buildType: "Debug"    }
+          - { name: "GCC",   version: "11",  dockerimage: "conanio/gcc11",   buildType: "Release"  }
           - { name: "CLANG", version: "3.9", dockerimage: "conanio/clang39", buildType: "Debug"    }
           - { name: "CLANG", version: "3.9", dockerimage: "conanio/clang39", buildType: "Release"  }
           - { name: "CLANG", version: "4.0", dockerimage: "conanio/clang40", buildType: "Debug"    }
