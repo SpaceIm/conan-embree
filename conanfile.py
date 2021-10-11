@@ -70,6 +70,28 @@ class EmbreeConan(ConanFile):
     def _build_subfolder(self):
         return "build_subfolder"
 
+    @property
+    def _has_sse_avx(self):
+        return self.settings.arch in ["x86", "x86_64"]
+
+    @property
+    def _embree_has_neon_support(self):
+        return tools.Version(self.version) >= "3.13.0"
+
+    @property
+    def _has_neon(self):
+        return "arm" in self.settings.arch
+
+    @property
+    def _num_isa(self):
+        num_isa = 0
+        if self._embree_has_neon_support and self._has_neon:
+            num_isa += 1
+        for simd_option in ["sse2", "sse42", "avx", "avx2", "avx512"]:
+            if self.options.get_safe(simd_option):
+                num_isa += 1
+        return num_isa
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -77,16 +99,17 @@ class EmbreeConan(ConanFile):
     def configure(self):
         if self.options.shared:
             del self.options.fPIC
-
-    @property
-    def _num_isa(self):
-        num_isa = 0
-        for simd_option in ["sse2", "sse42", "avx", "avx2", "avx512"]:
-            if getattr(self.options, simd_option, False):
-                num_isa += 1
-        return num_isa
+        if not self._has_sse_avx:
+            del self.options.sse2
+            del self.options.sse42
+            del self.options.avx
+            del self.options.avx2
+            del self.options.avx512
 
     def validate(self):
+        if not (self._has_sse_avx or (self._embree_has_neon_support and self._has_neon)):
+            raise ConanInvalidConfiguration("Embree {} doesn't support {}".format(self.version, self.settings.arch))
+
         version = tools.Version(self.settings.compiler.version)
         if self.settings.compiler == "clang" and version < "4":
             raise ConanInvalidConfiguration("Clang < 4 is not supported")
@@ -98,7 +121,10 @@ class EmbreeConan(ConanFile):
                 cannot be built with clang libc++, use libstdc++ instead".format(self.version))
 
         if self.settings.compiler == "apple-clang" and not self.options.shared and version >= "9.0" and self._num_isa > 1:
-            raise ConanInvalidConfiguration("Embree static with apple-clang >=9 and multiple simd is not supported")
+            raise ConanInvalidConfiguration("Embree static with apple-clang >=9 and multiple ISA (simd) is not supported")
+
+        if self._num_isa == 0:
+            raise ConanInvalidConfiguration("At least one ISA (simd) must be enabled")
 
     def source(self):
         tools.get(**self.conan_data["sources"][self.version],
@@ -127,12 +153,18 @@ class EmbreeConan(ConanFile):
         self._cmake.definitions["EMBREE_ISPC_SUPPORT"] = False
         self._cmake.definitions["EMBREE_TASKING_SYSTEM"] = "INTERNAL"
         self._cmake.definitions["EMBREE_MAX_ISA"] = "NONE"
-        self._cmake.definitions["EMBREE_ISA_SSE2"] = self.options.sse2
-        self._cmake.definitions["EMBREE_ISA_SSE42"] = self.options.sse42
-        self._cmake.definitions["EMBREE_ISA_AVX"] = self.options.avx
-        self._cmake.definitions["EMBREE_ISA_AVX2"] = self.options.avx2
-        self._cmake.definitions["EMBREE_ISA_AVX512KNL"] = self.options.avx512
-        self._cmake.definitions["EMBREE_ISA_AVX512SKX"] = self.options.avx512
+        if self._embree_has_neon_support:
+            self._cmake.definitions["EMBREE_ISA_NEON"] = self._has_neon
+        self._cmake.definitions["EMBREE_ISA_SSE2"] = self.options.get_safe("sse2", False)
+        self._cmake.definitions["EMBREE_ISA_SSE42"] = self.options.get_safe("sse42", False)
+        self._cmake.definitions["EMBREE_ISA_AVX"] = self.options.get_safe("avx", False)
+        self._cmake.definitions["EMBREE_ISA_AVX2"] = self.options.get_safe("avx2", False)
+        if tools.Version(self.version) < "3.12.2":
+            # TODO: probably broken if avx512 enabled, must cumbersome to add specific options in the recipe
+            self._cmake.definitions["EMBREE_ISA_AVX512KNL"] = self.options.get_safe("avx512", False)
+            self._cmake.definitions["EMBREE_ISA_AVX512SKX"] = self.options.get_safe("avx512", False)
+        else:
+            self._cmake.definitions["EMBREE_ISA_AVX512"] = self.options.get_safe("avx512", False)
 
         self._cmake.configure(build_folder=self._build_subfolder)
         return self._cmake
@@ -197,7 +229,9 @@ class EmbreeConan(ConanFile):
         self.cpp_info.libs = ["embree3"]
         if not self.options.shared:
             self.cpp_info.libs.extend(["sys", "math", "simd", "lexers", "tasking"])
-            for lib in ["embree_sse42", "embree_avx", "embree_avx2", "embree_avx512knl", "embree_avx512skx"]:
+            simd_libs = ["embree_sse42", "embree_avx", "embree_avx2"]
+            simd_libs.extend(["embree_avx512knl", "embree_avx512skx"] if tools.Version(self.version) < "3.12.2" else ["embree_avx512"])
+            for lib in simd_libs:
                 if _lib_exists(lib):
                     self.cpp_info.libs.append(lib)
 
