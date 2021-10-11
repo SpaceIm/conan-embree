@@ -19,6 +19,10 @@ class EmbreeConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "sse42": [True, False],
+        "avx": [True, False],
+        "avx2": [True, False],
+        "avx512": [True, False],
         "geometry_curve": [True, False],
         "geometry_grid": [True, False],
         "geometry_instance": [True, False],
@@ -35,6 +39,10 @@ class EmbreeConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
+        "sse42": True,
+        "avx": False,
+        "avx2": False,
+        "avx512": False,
         "geometry_curve": True,
         "geometry_grid": True,
         "geometry_instance": True,
@@ -68,6 +76,14 @@ class EmbreeConan(ConanFile):
         if self.options.shared:
             del self.options.fPIC
 
+    @property
+    def _num_isa(self):
+        num_isa = 0
+        for simd_option in ["sse42", "avx", "avx2", "avx512"]:
+            if getattr(self.options, simd_option):
+                num_isa += 1
+        return num_isa
+
     def validate(self):
         version = tools.Version(self.settings.compiler.version)
         if self.settings.compiler == "clang" and version < "4":
@@ -78,6 +94,9 @@ class EmbreeConan(ConanFile):
         if self.settings.os == "Linux" and self.settings.compiler == "clang" and self.settings.compiler.libcxx == "libc++":
             raise ConanInvalidConfiguration("conan recipe for Embree v{0} \
                 cannot be built with clang libc++, use libstdc++ instead".format(self.version))
+
+        if self.settings.compiler == "apple-clang" and not self.options.shared and version >= "9.0" and self._num_isa > 1:
+            raise ConanInvalidConfiguration("Embree static with apple-clang >=9 and multiple simd is not supported")
 
     def source(self):
         tools.get(**self.conan_data["sources"][self.version],
@@ -105,6 +124,13 @@ class EmbreeConan(ConanFile):
         self._cmake.definitions["EMBREE_IGNORE_INVALID_RAYS"] = self.options.ignore_invalid_rays
         self._cmake.definitions["EMBREE_ISPC_SUPPORT"] = False
         self._cmake.definitions["EMBREE_TASKING_SYSTEM"] = "INTERNAL"
+        self._cmake.definitions["EMBREE_MAX_ISA"] = "NONE"
+        self._cmake.definitions["EMBREE_ISA_SSE2"] = False # not used
+        self._cmake.definitions["EMBREE_ISA_SSE42"] = self.options.sse42
+        self._cmake.definitions["EMBREE_ISA_AVX"] = self.options.avx
+        self._cmake.definitions["EMBREE_ISA_AVX2"] = self.options.avx2
+        self._cmake.definitions["EMBREE_ISA_AVX512KNL"] = self.options.avx512
+        self._cmake.definitions["EMBREE_ISA_AVX512SKX"] = self.options.avx512
 
         self._cmake.configure(build_folder=self._build_subfolder)
         return self._cmake
